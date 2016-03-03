@@ -96,6 +96,38 @@ def VGG_16_shared(n_photos=1):
     model.add_shared_node(Dropout(0.5),name='dropout2',inputs=['dense2'])
     model.add_shared_node(Dense(1000, activation='softmax'),name='output',inputs=['dropout2'])
     return model
+def alexnet_shared(n_photos=1):
+    model=Graph()
+    if not os.path.exists("alexnetparams.pkl"):
+        s3=boto.connect_s3()
+        bucket=s3.get_bucket("timpigpractice")
+        key=bucket.new_key("alexnet")
+        key.set_contents_from_filename("alexnetparams.pkl")
+        params=pickle.load(open("alexnetparams.pkl",'rb'))
+    else:
+        params=pickle.load(open("alexnetparams.pkl",'rb'))
+    for i in xrange(0,n_photos):
+        model.add_node(ZeroPadding2D((1,1),input_shape=(3,224,224)),name='input'+str(i))
+    model.add_shared_node(Convolution2D(96, 11, 11,subsample=4, activation='relu',weights=model2.layers[15].get_weights()),name='conv1',inputs=['input'+str(i) for i in xrange(0,n_photos)])
+    model.add_shared_node(BatchNormalization(),name='norm1',inputs=['conv1'])
+    model.add_shared_node(MaxPooling2D((3,3), strides=(2,2)),name='max1',inputs=['norm1'])
+    model.add_shared_node(Convolution2D(256, 5, 5,subsample=1, activation='relu',weights=model2.layers[15].get_weights()),name='conv2',inputs=['max1'])
+    model.add_shared_node(ZeroPadding2D((2,2)),name='zero2',inputs=['conv2'])
+    model.add_shared_node(BatchNormalization(),name='norm2',inputs=['zero2'])
+    model.add_shared_node(MaxPooling2D((3,3), strides=(2,2)),name='max2',inputs=['norm2'])
+    model.add_shared_node(Convolution2D(384, 3, 3,subsample=1, activation='relu',weights=model2.layers[15].get_weights()),name='conv3',inputs=['max2'])
+    model.add_shared_node(ZeroPadding2D((1,1)),name='zero3',inputs=['conv3'])
+    model.add_shared_node(Convolution2D(384, 3, 3,subsample=1, activation='relu',weights=model2.layers[15].get_weights()),name='conv4',inputs=['zero3'])
+    model.add_shared_node(ZeroPadding2D((1,1)),name='zero4',inputs=['conv4'])
+    model.add_shared_node(Convolution2D(256, 3, 3,subsample=1, activation='relu',weights=model2.layers[15].get_weights()),name='conv5',inputs=['zero4'])
+    model.add_shared_node(ZeroPadding2D((1,1)),name='zero5',inputs=['conv5'])
+    model.add_shared_node(MaxPooling2D((3,3), strides=(2,2)),name='max3',inputs=['zero5'])
+    model.add_shared_node(Flatten(),name='flatten',inputs=['max3'])
+    model.add_shared_node(Dense(4096, activation='relu'),name='dense1',inputs=['flatten'])
+    model.add_shared_node(Dropout(0.5),name='dropout1',inputs=['dense1'])
+    model.add_shared_node(Dense(4096, activation='relu'),name='dense2',inputs=['dropout1'])
+    model.add_shared_node(Dropout(0.5),name='dropout2',inputs=['dense2'])
+    model.add_shared_node(Dense(9), activation='softmax'),name='output',inputs=['dropout2'])
 def print_structure(weight_file_path):
     """
     Prints out the structure of HDF5 file.
